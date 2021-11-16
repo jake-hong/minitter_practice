@@ -1,5 +1,19 @@
 from flask import Flask, request,jsonify
 from flask.json import JSONEncoder
+from sqlalchemy import create_engine, text
+
+def create_app(test_config = None):
+    app = Flask(__name__)
+    
+    if test_config is None:
+        app.config.from_pyfile("config.py")
+    else:
+        app.config.update(test_config)
+    
+    database = create_engine(app.config['db_url'], encoding='utf-8',max_overflow = 0)
+    app.database = database
+    
+    return app 
 
 #  Default JSON encoder 는 set을 JSON으로 변환할 수 없음. 
 # 커스텀 인코더를 작성하여 set을 list로 변환하고, jSON으로 변환 가능하게 해준다. 
