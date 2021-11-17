@@ -65,7 +65,7 @@ def insert_unfollow(user_unfollow):
     """),user_unfollow).rowcount
 
 def get_timeline(user_id):
-    timeline = current_app.database.execute(text("""
+    tweets = current_app.database.execute(text("""
         SELECT 
             t.user_id,
             t.tweet
@@ -77,7 +77,9 @@ def get_timeline(user_id):
         'user_id':user_id
         }).fetchall()
 
-    return [{
+    time_line = [{
         'user_id': tweet['user_id'],
         'tweet' : tweet['tweet']
-    } for tweet in timeline]
+    } for tweet in tweets]
+
+    return time_line
