@@ -1,3 +1,6 @@
+import jwt
+import bcrypt 
+
 from flask import current_app
 from sqlalchemy import text
 
@@ -20,18 +23,32 @@ def get_user(user_id):
         'profile' : user['profile']
     } if user else None
 
+def get_login_user(email):
+    row = current_app.database.execute(text("""
+            SELECT 
+                id, 
+                hashed_password
+            FROM users
+            WHERE email = :email
+        """),{'email':email}).fetchone()
+
+    return {
+        'id' :row['id'],
+        'hashed_password':row['hashed_password']
+    } if row else None    
+
 def insert_user(user):
     return current_app.database.execute(text("""
        INSERT INTO users(
-           id,
            name,
            email,
+           profile,
            hashed_password
        ) VALUES(
-           :id,
            :name,
            :email,
-           :hashed_password
+           :profile,
+           :password
        )
     """),user).lastrowid
 
