@@ -1,7 +1,11 @@
+import jwt
+import bcrypt
+
 from flask import Flask, request,jsonify
 from flask.json import JSONEncoder
-from sqlalchemy import create_engine, text
-from model import get_user, insert_user, insert_tweet, insert_follow, insert_unfollow, get_timeline
+from sqlalchemy import create_engine
+from model import get_user, get_login_user, insert_user, insert_tweet, insert_follow, insert_unfollow, get_timeline
+from datetime import datetime,timedelta
 
 #  Default JSON encoder 는 set을 JSON으로 변환할 수 없음. 
 # 커스텀 인코더를 작성하여 set을 list로 변환하고, jSON으로 변환 가능하게 해준다. 
@@ -25,14 +29,36 @@ def create_app(test_config = None):
     database = create_engine(app.config['DB_URL'], encoding='utf-8',max_overflow = 0)
     app.database = database
     
-    # 로그인
+    # 로그인 및 비밀번호 암호화 
     @app.route('/sign_up', methods = ['POST'])
     def sign_up():
         new_user = request.json
+        new_user['password'] = bcrypt.hashpw(new_user['password'].encode('UTF-8'),bcrypt.gensalt())
         new_user_id = insert_user(new_user)
         new_user = get_user(new_user_id)
 
         return jsonify(new_user)
+
+    @app.route('/login', methods= ['POST'])
+    def login():
+        credential = request.json 
+        email = credential['email']
+        password = credential['password']
+        user_credential = get_login_user(email)
+
+
+        if user_credential and bcrypt.checkpw(password.encode('UTF-8'),user_credential['hashed_password'].encode('UTF-8')):
+            user_id =user_credential['id']
+            payload ={
+                'user_id' :user_id,
+                'exp' : datetime.utcnow() + timedelta(seconds= 60 * 60 *24)
+            }
+            token = jwt.encode(payload, app.config['JWT_SECRET_KEY'],'HS256')
+            return jsonify({
+                'access_token':token.decode('UTF-8')
+            }) 
+        else:
+            return '', 401
 
     # 300자 글 올리기
     @app.route('/tweet', methods = ['POST'])
