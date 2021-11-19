@@ -1,15 +1,63 @@
 import config
 import pytest
 import json 
-# import bcrypt
+import bcrypt
 
 from app import create_app 
 from sqlalchemy import create_engine,text
 
 
-datbase = create_engine(config.test_config['DB_URL'], encoding='utf-8',max_overflow=0)
+database = create_engine(config.test_config['DB_URL'], encoding='utf-8',max_overflow=0)
 
+def setup_function():
+    ## Create a test user 
+    hashed_password =bcrypt.hashpw(b'test1234',bcrypt.gensalt())
+    new_users = {
+        'id'      : 1, 
+        'name'    : '홍성은',
+        'email'   : 'hongse21@gmail.com',
+        'profile' : 'test profile',
+        'hashed_password' : hashed_password
+    }, {
+        'id'      : 2, 
+        'name'    : 'jake',
+        'email'   : 'jale21@gmail.com',
+        'profile' : 'test profile',
+        'hashed_password' : hashed_password
+    }
+    database.execute(text("""
+    INSERT INTO users(
+        id,
+        name,
+        email,
+        profile,
+        hashed_password
+    ) VALUES (
+        :id,
+        :name,
+        :email,
+        :profile,
+        :hashed_password
+    )
+    """),new_users)
 
+    database.execute(text("""
+        INSERT INTO tweets(
+            user_id,
+            tweet
+        )VALUES(
+            2,
+            "hello world"
+        )
+    """))
+
+def teardown_function():
+    database.execute(text("SET FOREIGN_KEY_CHECKS=0"))
+    database.execute(text("TRUNCATE users"))
+    database.execute(text("TRUNCATE tweets"))
+    database.execute(text("TRUNCATE user_follow_list"))
+    database.execute(text("SET FOREIGN_KEY_CHECKS=1"))
+    
 @pytest.fixture
 def api():
     app = create_app(config.test_config)
@@ -18,29 +66,52 @@ def api():
 
     return api 
 
-def test_tweet(api):
-    ## 테스트 사용자 생성 
-    new_user = {
-        'email' : 'hongse24@gmail.com',
-        'password' : 'test1234',
-        'name'     : '홍성은',
-        'profile'  : 'test_profile'
-    }
+def test_login(api):
     resp = api.post(
-        '/sign-up',
-        data = json.dumps(new_user),
+        '/login',
+        data =json.dumps({'email':'hongse21@gmail.com','password':'test1234'}),
         content_type = 'application/json'
     )
-    assert resp.status_code ==200 
+    assert b"access_token" in resp.data
+
+def test_unauthorizes(api):
+    resp =api.post(
+        '/tweet',
+        data = json.dumps({'tweet':'hello world'}),
+        content_type = 'application/json'
+    )
+    assert resp.status_code == 401
+    
+    resp =api.post(
+        '/unfollow',
+        data =json.dumps({'unfollow':2}),
+        content_type ='application/json'
+    )
+    assert resp.status_code == 401
+
+def test_tweet(api):
+    ## 테스트 사용자 생성 
+    # new_user = {
+    #     'email' : 'hongse21@gmail.com',
+    #     'password' : 'test1234',
+    #     'name'     : '홍성은',
+    #     'profile'  : 'test_profile'
+    # }
+    # resp = api.post(
+    #     '/sign-up',
+    #     data = json.dumps(new_user),
+    #     content_type = 'application/json'
+    # )
+    # assert resp.status_code ==200 
 
     ## getthe id of the new user 
-    resp_json = json.loads(resp.data)
-    new_user_id = resp_json['id']
+    # resp_json = json.loads(resp.data)
+    # new_user_id = resp_json['id']
 
     ## 로그인 
     resp = api.post(
         '/login',
-        data = json.dumps({'email' :'hongse24@gmail.com',
+        data = json.dumps({'email' :'hongse21@gmail.com',
                         'password':'test1234'}),
         content_type = 'application/json'
     )
@@ -58,7 +129,7 @@ def test_tweet(api):
     assert resp.status_code == 200 
     
     ## tweet 확인 
-    resp = api.get(f'/timeline/{new_user_id}')
+    resp = api.get(f'/timeline/1')
     tweets = json.loads(resp.data)
 
     assert resp.status_code == 200 
