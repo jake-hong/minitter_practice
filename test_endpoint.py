@@ -21,7 +21,7 @@ def setup_function():
     }, {
         'id'      : 2, 
         'name'    : 'jake',
-        'email'   : 'jale21@gmail.com',
+        'email'   : 'jake21@gmail.com',
         'profile' : 'test profile',
         'hashed_password' : hashed_password
     }
@@ -55,7 +55,7 @@ def teardown_function():
     database.execute(text("SET FOREIGN_KEY_CHECKS=0"))
     database.execute(text("TRUNCATE users"))
     database.execute(text("TRUNCATE tweets"))
-    database.execute(text("TRUNCATE user_follow_list"))
+    database.execute(text("TRUNCATE users_follow_list"))
     database.execute(text("SET FOREIGN_KEY_CHECKS=1"))
     
 @pytest.fixture
@@ -141,4 +141,101 @@ def test_tweet(api):
                 'tweet' : 'hello world!'
             }
         ]
+    }
+
+def test_follow(api):
+    #log in 
+    resp =api.post(
+        '/login',
+        data =json.dumps({'email':'hongse21@gmail.com', 'password': 'test1234'}),
+        content_type = 'application/json'
+    )
+    resp_json = json.loads(resp.data)
+    access_token =resp_json['access_token']
+    
+    # tweet이 비어 있는지 확인 
+    resp =api.get(f'/timeline/1')
+    tweets = json.loads(resp.data)
+    
+    assert resp.status_code ==200
+    assert tweets =={
+        'user_id' : 1 ,
+        'timeline' : []
+    }
+
+    # follow id = 2 
+    resp = api.post(
+        '/follow',
+        data = json.dumps({'id': 1, 'follow_user_id':2}),
+        content_type = 'application/json',
+        headers = {'Authorization': access_token}
+    )
+    assert resp.status_code == 200
+
+    # tweet 리턴 여부 확인 
+    resp = api.get(f'/timeline/1')
+    tweets =json.loads(resp.data)
+
+    assert resp.status_code ==200
+    assert tweets == {
+        'user_id' : 1,
+        'timeline' : [
+            {
+                'user_id':2, 
+                'tweet':'hello world'
+            }
+        ]
+    }
+
+def test_unfollow(api):
+    resp = api.post(
+        '/login',
+        data = json.dumps({'email':'hongse21@gmail.com', 'password':'test1234'}),
+        content_type = 'application/json'
+    )
+    resp_json = json.loads(resp.data)
+    access_token = resp_json['access_token']
+
+    # follow id 확인 
+    resp = api.post(
+        '/follow',
+        data = json.dumps({'id': 1, 'follow_user_id':2}),
+        content_type = 'application/json',
+        headers = {'Authorization': access_token}
+    )
+    assert resp.status_code == 200
+
+    # tweet 리턴 여부 확인 
+
+    resp = api.get(f'/timeline/1')
+    tweets =json.loads(resp.data)
+
+    assert tweets =={
+        'user_id' :1,
+        'timeline' :[
+            {
+                'user_id' : 2,
+                'tweet' :'hello world'
+            }
+        ]
+    }
+
+    # unfollow 확인 
+
+    resp =api.post(
+        '/unfollow',
+        data = json.dumps({'id':1, 'unfollow':2}),
+        content_type = 'application/json',
+        headers = {'Authorization':access_token}
+    )
+    assert resp.status_code == 200
+
+    # tweet 리턴 여부 확인 
+    resp = api.get(f'/timeline/1')
+    tweets =json.loads(resp.data)
+
+    assert resp.status_code == 200
+    assert tweets =={
+        'user_id' :1,
+        'timeline' :[]
     }

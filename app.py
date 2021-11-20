@@ -72,7 +72,7 @@ def create_app(test_config = None):
 
 
         if user_credential and bcrypt.checkpw(password.encode('UTF-8'),user_credential['hashed_password'].encode('UTF-8')):
-            user_id =user_credential['id']
+            user_id = user_credential['id']
             payload ={
                 'user_id' :user_id,
                 'exp' : datetime.utcnow() + timedelta(seconds= 60 * 60 *24)
