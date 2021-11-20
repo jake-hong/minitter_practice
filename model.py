@@ -65,7 +65,7 @@ def insert_tweet(user_tweet):
 
 def insert_follow(user_follow):
     return current_app.database.execute(text("""
-        INSERT INTO user_follow_list(
+        INSERT INTO users_follow_list(
             user_id,
             follow_user_id  
         ) VALUES (
@@ -76,7 +76,7 @@ def insert_follow(user_follow):
 
 def insert_unfollow(user_unfollow):
     return current_app.database.execute(text("""
-        DELETE FROM user_follow_list
+        DELETE FROM users_follow_list
         WHERE user_id = :id
         AND follow_user_id = :unfollow
     """),user_unfollow).rowcount
